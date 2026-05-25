@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft Steve Runner Multiplayer</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+body{
+background:#111;
+overflow:hidden;
+font-family:monospace;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+background-image:url('https://images.unsplash.com/photo-1627856013091-fed6e4e30025?q=80&w=1600&auto=format&fit=crop');
+background-size:cover;
+background-position:center;
+}
+
+body::after{
+content:"";
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.5);
+}
+
+#gameWrap{
+position:relative;
+z-index:2;
+width:900px;
+border:4px solid #7CFC00;
+box-shadow:0 0 25px #7CFC00;
+}
+
+#topbar{
+background:#1b1b1b;
+color:#7CFC00;
+padding:10px;
+display:flex;
+justify-content:space-between;
+font-weight:bold;
+}
+
+canvas{
+display:block;
+background:#87CEEB;
+image-rendering:pixelated;
+}
+
+#msg{
+background:#1b1b1b;
+color:#7CFC00;
+padding:8px;
+text-align:center;
+}
+</style>
+</head>
+<body>
+
+<div id="gameWrap">
+
+<div id="topbar">
+<div>P1: WASD</div>
+<div>P2: ARROWS</div>
+<div>BUILD: B</div>
+</div>
+
+<canvas id="game" width="900" height="420"></canvas>
+
+<div id="msg">
+MULTIPLAYER MINECRAFT RUNNER + BUILD MODE
+</div>
+
+</div>
+
+<script>
+
+const cv = document.getElementById("game");
+const cx = cv.getContext("2d");
+
+const W = cv.width;
+const H = cv.height;
+const G = 360;
+
+const music = new Audio(
+"https://cdn.pixabay.com/download/audio/2023/09/17/audio_6f2f5f9c94.mp3?filename=pixel-dreams-166245.mp3"
+);
+
+music.loop = true;
+music.volume = 0.12;
+
+window.addEventListener("click",()=>{
+music.play().catch(()=>{});
+},{once:true});
+
+const creeper = new Audio(
+"https://www.myinstants.com/media/sounds/minecraft-creeper-explosion.mp3"
+);
+
+let buildMode = false;
+
+const keys = {};
+
+document.addEventListener("keydown",e=>{
+keys[e.key.toLowerCase()] = true;
+
+if(e.key.toLowerCase()==='b'){
+buildMode = !buildMode;
+}
+});
+
+document.addEventListener("keyup",e=>{
+keys[e.key.toLowerCase()] = false;
+});
+
+const blocks = [];
+
+cv.addEventListener("click",e=>{
+if(!buildMode) return;
+
+const rect = cv.getBoundingClientRect();
+const x = Math.floor((e.clientX - rect.left)/20)*20;
+const y = Math.floor((e.clientY - rect.top)/20)*20;
+
+blocks.push({x,y});
+});
+
+function makePlayer(x,color,name){
+return {
+x,
+y:G,
+vx:0,
+vy:0,
+color,
+name,
+score:0,
+alive:true
+};
+}
+
+const p1 = makePlayer(120,"#00bfff","STEVE 1");
+const p2 = makePlayer(220,"#ff5555","STEVE 2");
+
+const sheep = [];
+
+function spawnSheep(){
+
+sheep.push({
+x:W+40,
+y:G-20,
+w:40,
+h:20,
+spd:7+Math.random()*2
+});
+
+}
+
+setInterval(spawnSheep,1400);
+
+function playerPhysics(p){
+
+if(!p.alive) return;
+
+p.vy += 0.6;
+p.y += p.vy;
+
+if(p.y > G){
+p.y = G;
+p.vy = 0;
+}
+
+}
+
+function controls(){
+
+if(keys['w'] && p1.y>=G){
+p1.vy = -11;
+}
+
+if(keys['arrowup'] && p2.y>=G){
+p2.vy = -11;
+}
+
+if(keys['a']) p1.x -= 4;
+if(keys['d']) p1.x += 4;
+
+if(keys['arrowleft']) p2.x -= 4;
+if(keys['arrowright']) p2.x += 4;
+
+}
+
+function drawPlayer(p){
+
+cx.fillStyle = '#d9b48f';
+cx.fillRect(p.x+6,p.y-38,16,16);
+
+cx.fillStyle = '#5b3a29';
+cx.fillRect(p.x+6,p.y-38,16,4);
+
+cx.fillStyle = p.color;
+cx.fillRect(p.x+4,p.y-22,20,12);
+
+cx.fillStyle = '#3b5cff';
+cx.fillRect(p.x+5,p.y-10,18,10);
+
+cx.fillStyle = '#654321';
+cx.fillRect(p.x+6,p.y,6,6);
+cx.fillRect(p.x+16,p.y,6,6);
+
+cx.fillStyle = '#fff';
+cx.font = '12px monospace';
+cx.fillText(p.name,p.x-8,p.y-45);
+
+}
+
+function drawGround(){
+
+for(let x=0;x<W;x+=20){
+
+cx.fillStyle='#6b8e23';
+cx.fillRect(x,G+5,20,15);
+
+cx.fillStyle='#7a5230';
+cx.fillRect(x,G+20,20,40);
+
+cx.strokeStyle='rgba(0,0,0,0.2)';
+cx.strokeRect(x,G+5,20,55);
+
+}
+
+}
+
+function drawBlocks(){
+
+blocks.forEach(b=>{
+
+cx.fillStyle='#8b8b8b';
+cx.fillRect(b.x,b.y,20,20);
+
+cx.strokeStyle='#444';
+cx.strokeRect(b.x,b.y,20,20);
+
+});
+
+}
+
+function drawSheep(s){
+
+cx.fillStyle='#fff';
+cx.fillRect(s.x,s.y,s.w,s.h);
+
+cx.fillStyle='#555';
+cx.fillRect(s.x+s.w-10,s.y+5,12,10);
+
+cx.fillStyle='#333';
+cx.fillRect(s.x+4,s.y+s.h,4,8);
+cx.fillRect(s.x+14,s.y+s.h,4,8);
+cx.fillRect(s.x+24,s.y+s.h,4,8);
+cx.fillRect(s.x+34,s.y+s.h,4,8);
+
+}
+
+function hit(a,b){
+
+return !(
+a.x+24 < b.x ||
+a.x > b.x+b.w ||
+a.y < b.y ||
+a.y-38 > b.y+b.h
+);
+
+}
+
+function updateSheep(){
+
+sheep.forEach(s=>{
+
+s.x -= s.spd;
+
+drawSheep(s);
+
+if(hit(p1,s) && p1.alive){
+p1.alive = false;
+creeper.play();
+}
+
+if(hit(p2,s) && p2.alive){
+p2.alive = false;
+creeper.play();
+}
+
+});
+
+}
+
+function scores(){
+
+if(p1.alive) p1.score++;
+if(p2.alive) p2.score++;
+
+cx.fillStyle='#fff';
+cx.font='16px monospace';
+
+cx.fillText('P1 SCORE: '+p1.score,20,30);
+cx.fillText('P2 SCORE: '+p2.score,20,55);
+
+}
+
+function gameOver(){
+
+if(!p1.alive && !p2.alive){
+
+cx.fillStyle='rgba(0,0,0,0.7)';
+cx.fillRect(0,0,W,H);
+
+cx.fillStyle='#7CFC00';
+cx.font='bold 42px monospace';
+cx.textAlign='center';
+cx.fillText('GAME OVER',W/2,H/2-20);
+
+cx.font='20px monospace';
+cx.fillText('REFRESH PAGE TO RESTART',W/2,H/2+30);
+
+return true;
+
+}
+
+return false;
+
+}
+
+function drawSky(){
+
+for(let y=0;y<H;y+=20){
+
+for(let x=0;x<W;x+=20){
+
+cx.fillStyle=(x+y)%40===0
+?'#8fd3ff'
+:'#7fc8f8';
+
+cx.fillRect(x,y,20,20);
+
+}
+}
+
+}
+
+function loop(){
+
+cx.clearRect(0,0,W,H);
+
+drawSky();
+drawGround();
+drawBlocks();
+
+controls();
+
+playerPhysics(p1);
+playerPhysics(p2);
+
+updateSheep();
+
+scores();
+
+if(buildMode){
+
+cx.fillStyle='#7CFC00';
+cx.font='18px monospace';
+cx.fillText('BUILD MODE ENABLED',W/2-120,40);
+
+}
+
+drawPlayer(p1);
+drawPlayer(p2);
+
+if(gameOver()) return;
+
+requestAnimationFrame(loop);
+
+}
+
+loop();
+
+</script>
+</body>
+</html>
+```
